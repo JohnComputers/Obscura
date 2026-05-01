@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>OBSCURA — A Daily Decryption</title>
+<meta name="description" content="A daily cryptogram puzzle. Decode the day's quote — but the cipher is written in glyphs that change every dawn." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+/* =====================================================================
+   OBSCURA — design tokens
+   ===================================================================== */
+:root{
+  --bg-deep:#070a13;
+  --bg:#0e1322;
+  --bg-2:#161c30;
+  --bg-3:#1f2640;
+
+  --paper:#f5e9c8;
+  --paper-mid:rgba(245, 233, 200, 0.78);
+  --paper-dim:rgba(245, 233, 200, 0.45);
+  --paper-faint:rgba(245, 233, 200, 0.2);
+
+  --gold:#c9a449;
+  --gold-hi:#f0d68a;
+  --gold-deep:#7e6230;
+
+  --plum:#6b3e7a;
+  --candle:#e8a956;
+  --copper:#c87c4a;
+
+  --error:#d56565;
+  --error-bg:rgba(213,101,101,0.14);
+  --success:#84c198;
+  --success-bg:rgba(132,193,152,0.14);
+
+  --shadow-lg:0 22px 50px -12px rgba(0,0,0,.8), 0 8px 18px -6px rgba(0,0,0,.55);
+  --shadow-md:0 10px 22px -8px rgba(0,0,0,.6), 0 4px 10px -2px rgba(0,0,0,.4);
+}
+
+/* =====================================================================
+   Reset / base
+   ===================================================================== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Inter',system-ui,sans-serif;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(107,62,122,.18), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(232,169,86,.07), transparent 70%),
+    linear-gradient(180deg, var(--bg-deep) 0%, var(--bg) 60%, var(--bg-deep) 100%);
+  color:var(--paper);
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Film grain */
+body::before{
+  content:"";
+  position:fixed;inset:0;
+  pointer-events:none;
+  z-index:1000;
+  opacity:.06;
+  mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/></svg>");
+}
+
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+button:disabled{cursor:not-allowed;opacity:.4}
+
+/* =====================================================================
+   Header
+   ===================================================================== */
+.topbar{
+  position:relative;z-index:5;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:24px;padding:22px 36px 16px;
+  border-bottom:1px solid rgba(245,233,200,.1);
+}
+.brand{display:flex;align-items:baseline;gap:14px}
+.brand-mark{
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-weight:600;
+  font-size:34px;
+  letter-spacing:.18em;
+  color:var(--paper);
+  position:relative;
+  text-shadow:0 0 30px rgba(240,214,138,.3);
+}
+.brand-mark::after{
+  content:"";
+  position:absolute;left:0;right:0;bottom:-6px;
+  height:1px;
+  background:linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+.brand-tag{
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;
+  font-size:14px;
+  color:var(--paper-dim);
+  letter-spacing:.05em;
+}
+.brand-tag::before{content:"— ";color:var(--gold);}
+.brand-tag::after{content:" —";color:var(--gold);}
+
+.meta{display:flex;align-items:center;gap:24px}
+.meta-stat{
+  display:flex;flex-direction:column;align-items:flex-end;
+  line-height:1.05;
+}
+.meta-label{
+  font-size:9px;letter-spacing:.32em;
+  color:var(--gold);
+  text-transform:uppercase;
+}
+.meta-value{
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-weight:600;
+  font-size:20px;
+  color:var(--paper);
+  margin-top:2px;
+}
+.meta-value.streak{color:var(--gold-hi)}
+.meta-value .flame{
+  display:inline-block;
+  font-size:14px;color:var(--candle);
+  margin-left:2px;
+  filter:drop-shadow(0 0 4px rgba(232,169,86,.6));
+}
+.icon-btn{
+  width:38px;height:38px;border-radius:10px;
+  border:1px solid rgba(245,233,200,.2);
+  background:rgba(0,0,0,.3);
+  display:grid;place-items:center;
+  font-size:18px;color:var(--paper-mid);
+  transition:background .15s, border-color .15s, color .15s;
+}
+.icon-btn:hover{background:rgba(245,233,200,.08);color:var(--paper);border-color:rgba(245,233,200,.4)}
+
+/* =====================================================================
+   Stage
+   ===================================================================== */
+.stage{
+  max-width:1100px;
+  margin:0 auto;
+  padding:36px 24px 120px;
+  position:relative;
+}
+
+.intro{
+  text-align:center;
+  margin-bottom:36px;
+}
+.intro h2{
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-weight:500;
+  font-size:22px;
+  color:var(--paper-mid);
+  letter-spacing:.05em;
+  margin-bottom:6px;
+}
+.intro h2 em{color:var(--gold-hi);font-style:italic;font-weight:600}
+.intro p{
+  font-size:13px;
+  color:var(--paper-dim);
+  letter-spacing:.04em;
+}
+
+/* =====================================================================
+   Cipher display
+   ===================================================================== */
+.cipher{
+  position:relative;
+  background:
+    linear-gradient(180deg, rgba(22,28,48,.6), rgba(14,19,34,.6));
+  border:1px solid rgba(245,233,200,.1);
+  border-radius:16px;
+  padding:36px 32px 32px;
+  margin-bottom:24px;
+  box-shadow:var(--shadow-md);
+  backdrop-filter:blur(6px);
+}
+.cipher::before{
+  content:"";
+  position:absolute;
+  top:14px;left:14px;right:14px;bottom:14px;
+  border:1px solid rgba(245,233,200,.05);
+  border-radius:10px;
+  pointer-events:none;
+}
+
+.cipher-text{
+  display:flex;flex-wrap:wrap;
+  gap:8px 18px;
+  justify-content:center;
+  margin-bottom:24px;
+  min-height:120px;
+}
+.word{
+  display:flex;
+  gap:6px;
+}
+
+.glyph-slot{
+  position:relative;
+  display:flex;flex-direction:column;align-items:center;
+  cursor:pointer;
+  padding:4px 2px 0;
+  border-radius:6px;
+  transition:background .15s, transform .15s;
+  user-select:none;
+}
+.glyph-slot:not(.punct):not(.solved):hover{background:rgba(245,233,200,.06)}
+.glyph-slot.selected{
+  background:rgba(201,164,73,.22);
+  box-shadow:inset 0 0 0 1px rgba(240,214,138,.45);
+}
+.glyph-slot.same-as-selected{
+  background:rgba(201,164,73,.1);
+}
+.glyph-slot.solved{cursor:default}
+.glyph-slot.shake{animation:shake .35s}
+@keyframes shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-4px)}
+  40%{transform:translateX(4px)}
+  60%{transform:translateX(-3px)}
+  80%{transform:translateX(3px)}
+}
+.glyph-slot.flip-in .glyph-icon{
+  animation:flipOut .4s forwards;
+}
+.glyph-slot.flip-in .letter-slot{
+  animation:flipIn .4s forwards;
+}
+@keyframes flipOut{
+  to{transform:rotateY(90deg);opacity:0}
+}
+@keyframes flipIn{
+  from{transform:rotateY(-90deg);opacity:0}
+  to{transform:rotateY(0);opacity:1}
+}
+
+.glyph-icon{
+  width:34px;height:34px;
+  display:grid;place-items:center;
+  color:var(--paper-mid);
+  transition:opacity .25s, color .15s;
+}
+.glyph-slot.solved .glyph-icon{
+  opacity:.18;
+  color:var(--paper-dim);
+}
+.glyph-slot.selected .glyph-icon,
+.glyph-slot.same-as-selected .glyph-icon{
+  color:var(--gold-hi);
+}
+.glyph-icon svg{display:block}
+
+.letter-slot{
+  font-family:'Cormorant Garamond',serif;
+  font-weight:600;
+  font-size:22px;
+  height:30px;
+  display:flex;align-items:center;justify-content:center;
+  min-width:24px;
+  color:var(--paper);
+  border-bottom:1px solid rgba(245,233,200,.18);
+  padding:0 4px;
+  letter-spacing:.05em;
+  transition:color .25s, border-color .25s;
+}
+.glyph-slot.solved .letter-slot{
+  color:var(--gold-hi);
+  border-bottom-color:rgba(240,214,138,.5);
+  text-shadow:0 0 12px rgba(240,214,138,.4);
+}
+.glyph-slot.tentative .letter-slot{
+  color:var(--paper);
+  border-bottom-color:rgba(245,233,200,.5);
+  font-style:italic;
+}
+.glyph-slot.error-flash .letter-slot{
+  color:var(--error);
+  animation:errorFlash .4s;
+}
+@keyframes errorFlash{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.15)}
+}
+.glyph-slot.empty .letter-slot{
+  color:var(--paper-faint);
+}
+
+.glyph-slot.punct{
+  cursor:default;
+}
+.glyph-slot.punct .glyph-icon{
+  color:var(--paper-dim);
+  font-family:'Cormorant Garamond',serif;
+  font-weight:500;font-size:24px;
+  line-height:1;
+}
+.glyph-slot.punct .letter-slot{
+  border-bottom:none;color:var(--paper-dim);
+}
+
+/* Decoded preview underline */
+.cipher-attribution{
+  text-align:center;
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-weight:500;
+  font-size:15px;
+  color:var(--paper-dim);
+  letter-spacing:.04em;
+  margin-top:8px;
+  opacity:0;
+  transition:opacity .5s;
+}
+.cipher-attribution.show{opacity:1}
+.cipher-attribution::before{content:"— "}
+
+/* =====================================================================
+   Status bar
+   ===================================================================== */
+.status-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:18px;
+  background:rgba(22,28,48,.5);
+  border:1px solid rgba(245,233,200,.08);
+  border-radius:12px;
+  padding:14px 18px;
+  margin-bottom:18px;
+}
+
+.mistakes{display:flex;align-items:center;gap:14px}
+.mistakes-label{
+  font-size:9px;letter-spacing:.3em;
+  color:var(--gold);
+  text-transform:uppercase;
+}
+.mistakes-marks{display:flex;gap:6px}
+.mark{
+  width:18px;height:18px;
+  border:1px solid rgba(245,233,200,.25);
+  border-radius:50%;
+  position:relative;
+  transition:all .25s;
+}
+.mark.used{
+  border-color:var(--error);
+  background:rgba(213,101,101,.18);
+}
+.mark.used::after{
+  content:"✕";
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  font-size:11px;font-weight:700;
+  color:var(--error);
+  font-family:'JetBrains Mono',monospace;
+}
+
+.hints{display:flex;align-items:center;gap:14px}
+.hints-label{
+  font-size:9px;letter-spacing:.3em;
+  color:var(--gold);
+  text-transform:uppercase;
+}
+.hints-marks{display:flex;gap:5px}
+.candle{
+  width:8px;height:18px;
+  background:linear-gradient(180deg, var(--candle) 0%, var(--copper) 60%, #6a3818 100%);
+  border-radius:2px 2px 1px 1px;
+  position:relative;
+  transition:opacity .3s;
+}
+.candle::before{
+  content:"";
+  position:absolute;
+  left:50%;top:-6px;
+  transform:translateX(-50%);
+  width:4px;height:6px;
+  background:radial-gradient(ellipse, #ffe082 0%, var(--candle) 60%, transparent 100%);
+  border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
+  filter:blur(.3px);
+  animation:flicker 1.6s ease-in-out infinite alternate;
+}
+@keyframes flicker{
+  from{opacity:.85;transform:translateX(-50%) scale(1)}
+  to{opacity:1;transform:translateX(-50%) scale(1.08)}
+}
+.candle.spent{opacity:.18}
+.candle.spent::before{display:none}
+
+/* =====================================================================
+   Alphabet bank
+   ===================================================================== */
+.alphabet{
+  display:flex;flex-wrap:wrap;justify-content:center;
+  gap:5px;
+  margin-bottom:18px;
+}
+.letter-key{
+  width:34px;height:42px;
+  border-radius:6px;
+  background:rgba(22,28,48,.6);
+  border:1px solid rgba(245,233,200,.12);
+  display:grid;place-items:center;
+  font-family:'Cormorant Garamond',serif;
+  font-weight:600;font-size:18px;
+  color:var(--paper);
+  cursor:pointer;
+  transition:background .15s, border-color .15s, color .15s, transform .1s;
+}
+.letter-key:hover:not(.used):not(.locked){
+  background:rgba(245,233,200,.08);
+  border-color:rgba(245,233,200,.3);
+  transform:translateY(-1px);
+}
+.letter-key:active:not(.used):not(.locked){transform:translateY(0)}
+.letter-key.used{
+  color:var(--paper-faint);
+  background:rgba(0,0,0,.4);
+  border-color:rgba(245,233,200,.06);
+  text-decoration:line-through;
+  text-decoration-color:rgba(245,233,200,.3);
+}
+.letter-key.locked{
+  color:var(--gold-hi);
+  background:rgba(201,164,73,.14);
+  border-color:rgba(240,214,138,.5);
+  text-shadow:0 0 8px rgba(240,214,138,.5);
+}
+.letter-key.disabled{opacity:.35;cursor:not-allowed}
+
+/* =====================================================================
+   Controls
+   ===================================================================== */
+.controls{
+  display:flex;align-items:center;justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.btn{
+  font-family:'Inter',sans-serif;
+  font-weight:600;font-size:11px;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  padding:11px 22px;
+  border-radius:10px;
+  background:linear-gradient(180deg, rgba(31,38,64,.95), rgba(14,19,34,.95));
+  border:1px solid rgba(245,233,200,.18);
+  color:var(--paper);
+  transition:background .15s, border-color .15s, transform .1s;
+  display:inline-flex;align-items:center;gap:8px;
+}
+.btn:hover:not(:disabled){
+  background:linear-gradient(180deg, rgba(45,54,84,.95), rgba(22,28,48,.95));
+  border-color:rgba(245,233,200,.4);
+  transform:translateY(-1px);
+}
+.btn.primary{
+  background:linear-gradient(180deg, var(--gold-hi), var(--gold));
+  color:var(--bg-deep);
+  border-color:var(--gold-hi);
+  text-shadow:0 1px 0 rgba(255,255,255,.2);
+}
+.btn.primary:hover:not(:disabled){background:linear-gradient(180deg, #f8e2a8, var(--gold-hi))}
+
+.btn.danger{
+  background:linear-gradient(180deg, rgba(60,28,28,.9), rgba(36,16,16,.9));
+  border-color:rgba(213,101,101,.5);
+  color:var(--paper-mid);
+}
+.btn.danger:hover:not(:disabled){
+  background:linear-gradient(180deg, rgba(80,38,38,.9), rgba(50,22,22,.9));
+  border-color:var(--error);
+}
+
+/* =====================================================================
+   Frequency analysis panel
+   ===================================================================== */
+.freq-panel{
+  margin-top:16px;
+  background:rgba(22,28,48,.5);
+  border:1px solid rgba(245,233,200,.1);
+  border-radius:12px;
+  padding:18px 20px;
+  display:none;
+}
+.freq-panel.show{display:block;animation:slideDown .25s ease-out}
+@keyframes slideDown{
+  from{opacity:0;transform:translateY(-8px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.freq-title{
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-weight:600;
+  font-size:14px;
+  color:var(--paper-mid);
+  letter-spacing:.05em;
+  margin-bottom:10px;
+  text-align:center;
+}
+.freq-rows{display:grid;grid-template-columns:auto auto;gap:6px 18px;align-items:center}
+.freq-row{display:flex;align-items:center;gap:10px;font-size:11px}
+.freq-row .gicon{width:22px;height:22px;color:var(--paper-mid)}
+.freq-row .bar{
+  flex:1;height:8px;
+  background:rgba(245,233,200,.06);
+  border-radius:4px;
+  overflow:hidden;
+}
+.freq-row .bar-fill{
+  height:100%;
+  background:linear-gradient(90deg, var(--gold), var(--gold-hi));
+}
+.freq-row .pct{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;color:var(--paper-dim);
+  min-width:38px;text-align:right;
+}
+.freq-row.mapped{opacity:.4}
+.freq-row.mapped .gicon{color:var(--gold-hi)}
+
+.freq-baseline{
+  margin-top:14px;padding-top:14px;
+  border-top:1px solid rgba(245,233,200,.1);
+  font-size:10px;color:var(--paper-dim);
+  text-align:center;line-height:1.6;
+  letter-spacing:.04em;
+}
+.freq-baseline strong{color:var(--gold-hi);font-weight:600}
+
+/* =====================================================================
+   Selection prompt
+   ===================================================================== */
+.selection-prompt{
+  position:fixed;
+  left:50%;bottom:24px;
+  transform:translateX(-50%) translateY(140%);
+  z-index:60;
+  background:linear-gradient(180deg, rgba(31,38,64,.98), rgba(14,19,34,.98));
+  border:1px solid rgba(240,214,138,.45);
+  border-radius:14px;
+  padding:14px 22px;
+  display:flex;align-items:center;gap:14px;
+  box-shadow:var(--shadow-lg);
+  backdrop-filter:blur(8px);
+  transition:transform .3s cubic-bezier(.4,1.4,.4,1);
+  max-width:calc(100vw - 24px);
+}
+.selection-prompt.show{transform:translateX(-50%) translateY(0)}
+.selection-prompt .glyph-display{
+  width:42px;height:42px;
+  display:grid;place-items:center;
+  color:var(--gold-hi);
+  background:rgba(201,164,73,.15);
+  border:1px solid rgba(240,214,138,.45);
+  border-radius:8px;
+}
+.selection-prompt .arrow{color:var(--paper-dim);font-size:18px}
+.selection-prompt .prompt-text{
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-weight:500;
+  font-size:15px;
+  color:var(--paper);
+  letter-spacing:.03em;
+}
+.selection-prompt .prompt-hint{
+  font-size:10px;color:var(--paper-dim);
+  letter-spacing:.18em;text-transform:uppercase;
+  margin-top:2px;
+}
+.selection-prompt .close-x{
+  margin-left:8px;
+  width:28px;height:28px;
+  border-radius:6px;
+  border:1px solid rgba(245,233,200,.2);
+  display:grid;place-items:center;
+  color:var(--paper-dim);
+  font-size:14px;
+}
+.selection-prompt .close-x:hover{color:var(--paper);background:rgba(245,233,200,.06)}
+
+/* =====================================================================
+   End-of-game modal
+   ===================================================================== */
+.modal-back{
+  position:fixed;inset:0;z-index:200;
+  background:radial-gradient(ellipse at center, rgba(0,0,0,.7), rgba(0,0,0,.94));
+  display:none;align-items:center;justify-content:center;
+  backdrop-filter:blur(10px);
+  padding:20px;
+}
+.modal-back.show{display:flex;animation:fadeIn .3s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.modal{
+  width:min(520px, 100%);
+  background:linear-gradient(180deg, var(--bg-2), var(--bg-deep));
+  border:1px solid rgba(245,233,200,.25);
+  border-radius:20px;
+  padding:36px 32px 28px;
+  text-align:center;
+  box-shadow:var(--shadow-lg);
+  position:relative;
+  animation:rise .35s cubic-bezier(.4,1.4,.4,1);
+}
+@keyframes rise{
+  from{opacity:0;transform:translateY(20px) scale(.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.modal::before{
+  content:"";position:absolute;inset:6px;border-radius:16px;
+  border:1px solid rgba(245,233,200,.08);pointer-events:none;
+}
+
+.modal h1{
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-weight:600;
+  font-size:36px;
+  color:var(--paper);
+  margin-bottom:6px;
+  line-height:1.1;
+}
+.modal h1 em{color:var(--gold-hi)}
+.modal h1.fail em{color:var(--error)}
+
+.modal-tag{
+  font-size:10px;letter-spacing:.42em;
+  color:var(--gold);text-transform:uppercase;
+  margin-bottom:16px;
+}
+.modal-tag.fail{color:var(--error)}
+
+.modal-quote{
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-weight:500;
+  font-size:18px;line-height:1.55;
+  color:var(--paper);
+  padding:16px 8px;
+  margin:14px 0;
+  position:relative;
+}
+.modal-quote::before,
+.modal-quote::after{
+  font-family:'Cormorant Garamond',serif;
+  font-style:normal;
+  font-size:32px;color:var(--gold);
+  position:absolute;
+  line-height:1;
+}
+.modal-quote::before{content:"“";left:-4px;top:0}
+.modal-quote::after{content:"”";right:-4px;bottom:0}
+.modal-attribution{
+  font-size:12px;color:var(--paper-dim);
+  letter-spacing:.08em;
+}
+.modal-attribution::before{content:"— "}
+
+.score-card{
+  display:grid;grid-template-columns:repeat(3, 1fr);
+  gap:12px;
+  padding:18px 0;
+  margin:18px 0;
+  border-top:1px solid rgba(245,233,200,.12);
+  border-bottom:1px solid rgba(245,233,200,.12);
+}
+.score-card .stat-block{display:flex;flex-direction:column;align-items:center;gap:3px}
+.score-card .stat-block .lbl{
+  font-size:9px;letter-spacing:.28em;
+  color:var(--gold);text-transform:uppercase;
+}
+.score-card .stat-block .val{
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-weight:600;
+  font-size:24px;color:var(--paper);
+}
+.score-card .stat-block .val.hi{color:var(--gold-hi)}
+
+.modal-blurb{
+  font-size:13px;color:var(--paper-mid);
+  line-height:1.6;margin-bottom:14px;
+  max-width:380px;margin-left:auto;margin-right:auto;
+}
+
+.share-grid{
+  font-family:'JetBrains Mono',monospace;
+  font-size:14px;line-height:1.4;
+  letter-spacing:.04em;
+  margin:14px 0;
+  color:var(--paper-mid);
+  user-select:all;
+  white-space:pre;
+}
+
+.modal-buttons{
+  display:flex;gap:10px;margin-top:14px;justify-content:center;
+  flex-wrap:wrap;
+}
+
+.countdown{
+  margin-top:18px;
+  font-size:11px;letter-spacing:.18em;
+  color:var(--paper-dim);
+  text-transform:uppercase;
+}
+.countdown strong{
+  color:var(--gold-hi);
+  font-family:'JetBrains Mono',monospace;
+  font-weight:700;
+  letter-spacing:.04em;
+}
+
+/* =====================================================================
+   How-to-play modal (first time)
+   ===================================================================== */
+.help-content{text-align:left;font-size:13px;line-height:1.7;color:var(--paper-mid)}
+.help-content strong{color:var(--gold-hi);font-weight:600}
+.help-content .step{
+  display:flex;gap:14px;
+  padding:10px 0;
+  border-bottom:1px solid rgba(245,233,200,.06);
+}
+.help-content .step:last-child{border-bottom:none}
+.help-content .step-num{
+  flex-shrink:0;
+  width:28px;height:28px;border-radius:50%;
+  background:rgba(201,164,73,.18);
+  border:1px solid rgba(240,214,138,.4);
+  display:grid;place-items:center;
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-weight:700;font-size:13px;
+  color:var(--gold-hi);
+}
+
+/* =====================================================================
+   Toast log
+   ===================================================================== */
+.log{
+  position:fixed;
+  right:18px;top:80px;
+  z-index:30;
+  width:240px;
+  display:flex;flex-direction:column;gap:6px;
+  pointer-events:none;
+}
+.log-line{
+  font-family:'Cormorant Garamond',serif;
+  font-style:italic;font-weight:500;
+  font-size:13px;letter-spacing:.02em;
+  padding:8px 14px;
+  background:rgba(7,10,19,.85);
+  border:1px solid rgba(245,233,200,.18);
+  border-radius:8px;
+  color:var(--paper);
+  animation:slideIn .3s ease-out, fadeOut .4s 2.4s forwards;
+  backdrop-filter:blur(4px);
+}
+.log-line.gold{border-color:rgba(240,214,138,.4);color:var(--gold-hi)}
+.log-line.error{border-color:rgba(213,101,101,.4);color:#f0a0a0}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes fadeOut{to{opacity:0;transform:translateX(20px)}}
+
+/* Mobile */
+@media (max-width: 700px){
+  .topbar{padding:14px 18px 12px;flex-wrap:wrap}
+  .meta{gap:14px}
+  .stage{padding:24px 12px 100px}
+  .cipher{padding:24px 16px}
+  .cipher-text{gap:6px 12px}
+  .glyph-icon{width:28px;height:28px}
+  .letter-slot{font-size:18px;height:26px;min-width:20px}
+  .alphabet{gap:4px}
+  .letter-key{width:28px;height:36px;font-size:15px}
+  .log{display:none}
+  .controls{gap:6px}
+  .btn{padding:10px 14px;font-size:10px}
+  .meta-stat:nth-child(1){display:none}
+}
+
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">OBSCURA</div>
+    <div class="brand-tag">A Daily Decryption</div>
+  </div>
+  <div class="meta">
+    <div class="meta-stat">
+      <span class="meta-label">Day</span>
+      <span class="meta-value" id="dayNumber">—</span>
+    </div>
+    <div class="meta-stat">
+      <span class="meta-label">Streak</span>
+      <span class="meta-value streak" id="streakNum">0<span class="flame">✺</span></span>
+    </div>
+    <button class="icon-btn" id="btnHelp" title="How to play" aria-label="How to play">?</button>
+    <button class="icon-btn" id="btnStats" title="Statistics" aria-label="Statistics">▤</button>
+  </div>
+</header>
+
+<main class="stage">
+
+  <div class="intro">
+    <h2>Today's <em>fragment</em> arrives in glyphs.</h2>
+    <p>Decode the quote. Each symbol stands for one letter — same symbol, same letter, every time.</p>
+  </div>
+
+  <section class="cipher">
+    <div class="cipher-text" id="cipherText"></div>
+    <div class="cipher-attribution" id="cipherAttribution"></div>
+  </section>
+
+  <div class="status-bar">
+    <div class="mistakes">
+      <span class="mistakes-label">Errors</span>
+      <div class="mistakes-marks" id="mistakesMarks"></div>
+    </div>
+    <div class="hints">
+      <span class="hints-label">Reveals</span>
+      <div class="hints-marks" id="hintsMarks"></div>
+    </div>
+  </div>
+
+  <div class="alphabet" id="alphabet"></div>
+
+  <div class="controls">
+    <button class="btn" id="btnFreq">⌬ Frequency</button>
+    <button class="btn" id="btnHint">✦ Reveal</button>
+    <button class="btn danger" id="btnReset">↺ Reset</button>
+  </div>
+
+  <div class="freq-panel" id="freqPanel">
+    <div class="freq-title">Glyph Frequency in this Cipher</div>
+    <div class="freq-rows" id="freqRows"></div>
+    <div class="freq-baseline">
+      <strong>English baseline:</strong> E (12.7%) · T (9.1%) · A (8.2%) · O (7.5%) · I (7.0%) · N (6.7%) · S (6.3%) · H (6.1%) · R (6.0%)
+    </div>
+  </div>
+
+</main>
+
+<!-- Selection prompt (floating) -->
+<div class="selection-prompt" id="selectionPrompt">
+  <div class="glyph-display" id="selectedGlyphDisplay"></div>
+  <span class="arrow">→</span>
+  <div>
+    <div class="prompt-text">Type a letter to assign</div>
+    <div class="prompt-hint">A–Z · or click the bank below</div>
+  </div>
+  <button class="close-x" id="closePrompt" aria-label="Close">✕</button>
+</div>
+
+<!-- End modal -->
+<div class="modal-back" id="endModal">
+  <div class="modal">
+    <div class="modal-tag" id="endTag">— Decryption complete —</div>
+    <h1 id="endHead">It is <em>read</em>.</h1>
+    <div class="modal-quote" id="endQuote"></div>
+    <div class="modal-attribution" id="endAttribution"></div>
+    <div class="score-card">
+      <div class="stat-block"><span class="lbl">Time</span><span class="val hi" id="endTime">—</span></div>
+      <div class="stat-block"><span class="lbl">Errors</span><span class="val" id="endErrors">—</span></div>
+      <div class="stat-block"><span class="lbl">Reveals</span><span class="val" id="endReveals">—</span></div>
+    </div>
+    <p class="modal-blurb" id="endBlurb"></p>
+    <div class="share-grid" id="shareGrid"></div>
+    <div class="modal-buttons">
+      <button class="btn" id="btnShare">Share Result</button>
+      <button class="btn primary" id="btnViewStats">View Stats</button>
+    </div>
+    <div class="countdown" id="countdown"></div>
+  </div>
+</div>
+
+<!-- Stats modal -->
+<div class="modal-back" id="statsModal">
+  <div class="modal">
+    <div class="modal-tag">— Your Codex —</div>
+    <h1>Statistics</h1>
+    <div class="score-card" style="grid-template-columns:repeat(4, 1fr)">
+      <div class="stat-block"><span class="lbl">Played</span><span class="val" id="sPlayed">0</span></div>
+      <div class="stat-block"><span class="lbl">Solved</span><span class="val hi" id="sSolved">0</span></div>
+      <div class="stat-block"><span class="lbl">Streak</span><span class="val hi" id="sStreak">0</span></div>
+      <div class="stat-block"><span class="lbl">Best</span><span class="val" id="sBest">0</span></div>
+    </div>
+    <div id="sNoData" style="font-size:13px;color:var(--paper-dim);font-style:italic;font-family:'Cormorant Garamond',serif;display:none">A blank ledger awaits your first solve.</div>
+    <div class="modal-buttons">
+      <button class="btn primary" id="btnStatsClose">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help modal -->
+<div class="modal-back" id="helpModal">
+  <div class="modal" style="text-align:left">
+    <div class="modal-tag" style="text-align:center">— The Method —</div>
+    <h1 style="text-align:center;margin-bottom:18px">How to <em>Decode</em></h1>
+    <div class="help-content">
+      <div class="step"><div class="step-num">1</div><div>Each <strong>glyph</strong> in the cipher above stands for one letter of the alphabet. The same glyph always means the same letter — within today's puzzle.</div></div>
+      <div class="step"><div class="step-num">2</div><div><strong>Tap a glyph</strong>, then type or click a letter to assign it. Get it right and every instance of that glyph reveals at once.</div></div>
+      <div class="step"><div class="step-num">3</div><div>You have <strong>5 errors</strong> and <strong>3 reveals</strong> per day. The Reveal button uncovers a random unsolved glyph for free.</div></div>
+      <div class="step"><div class="step-num">4</div><div>The <strong>Frequency panel</strong> shows how often each glyph appears. Common glyphs are likely E, T, A, or O. Lean on it.</div></div>
+      <div class="step"><div class="step-num">5</div><div>A <strong>new cipher</strong> arrives at midnight, in your local time. Tomorrow's glyphs will be entirely different from today's — no memorization carries over.</div></div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn primary" id="btnHelpClose">Begin</button>
+    </div>
+  </div>
+</div>
+
+<div class="log" id="log"></div>
+
+<script>
+/* =====================================================================
+   OBSCURA — Daily Cryptogram Engine
+   ===================================================================== */
+
+/* ----- 26 hand-designed abstract glyphs -----
+   Each entry is an array of shape ops:
+   ['L', x1,y1,x2,y2]    line
+   ['C', cx,cy,r]        hollow circle
+   ['D', cx,cy,r]        solid dot
+   ['A', cx,cy,r,a1,a2]  arc (degrees)
+   Designed in a 30x30 viewBox.
+*/
+const GLYPHS = [
+  // 0: dot at center inside ring
+  [['C',15,15,10],['D',15,15,2.4]],
+  // 1: vertical with crossbar near top
+  [['L',15,4,15,26],['L',8,9,22,9]],
+  // 2: triangle pointing up
+  [['L',15,5,25,24],['L',25,24,5,24],['L',5,24,15,5]],
+  // 3: triangle pointing down
+  [['L',15,25,25,7],['L',25,7,5,7],['L',5,7,15,25]],
+  // 4: square outline
+  [['L',7,7,23,7],['L',23,7,23,23],['L',23,23,7,23],['L',7,23,7,7]],
+  // 5: diamond outline
+  [['L',15,4,26,15],['L',26,15,15,26],['L',15,26,4,15],['L',4,15,15,4]],
+  // 6: X — diagonals
+  [['L',6,6,24,24],['L',24,6,6,24]],
+  // 7: cross +
+  [['L',15,4,15,26],['L',4,15,26,15]],
+  // 8: three dots vertical
+  [['D',15,7,2.2],['D',15,15,2.2],['D',15,23,2.2]],
+  // 9: three dots horizontal
+  [['D',7,15,2.2],['D',15,15,2.2],['D',23,15,2.2]],
+  // 10: vertical line | with dot above
+  [['L',15,12,15,26],['D',15,7,2.2]],
+  // 11: vertical line with dot below
+  [['L',15,4,15,18],['D',15,23,2.2]],
+  // 12: arc opening up (smile)
+  [['A',15,14,9,0,180]],
+  // 13: arc opening down
+  [['A',15,16,9,180,360]],
+  // 14: arc opening right (
+  [['A',16,15,9,90,270]],
+  // 15: arc opening left )
+  [['A',14,15,9,-90,90]],
+  // 16: V chevron
+  [['L',6,6,15,24],['L',15,24,24,6]],
+  // 17: ^ chevron up
+  [['L',6,24,15,6],['L',15,6,24,24]],
+  // 18: < chevron
+  [['L',24,6,8,15],['L',8,15,24,24]],
+  // 19: > chevron
+  [['L',6,6,22,15],['L',22,15,6,24]],
+  // 20: two dots vertical
+  [['D',15,9,2.6],['D',15,21,2.6]],
+  // 21: two dots horizontal
+  [['D',9,15,2.6],['D',21,15,2.6]],
+  // 22: vertical with dots both sides
+  [['L',15,5,15,25],['D',7,15,2.2],['D',23,15,2.2]],
+  // 23: small circle on a stem (lollipop)
+  [['C',15,9,5],['L',15,15,15,25]],
+  // 24: square with dot in center
+  [['L',8,8,22,8],['L',22,8,22,22],['L',22,22,8,22],['L',8,22,8,8],['D',15,15,2]],
+  // 25: zigzag
+  [['L',6,8,12,18],['L',12,18,18,8],['L',18,8,24,18]],
+];
+
+/* ----- Quotes database ----- */
+const QUOTES = [
+  ["The unexamined life is not worth living", "Socrates"],
+  ["I think therefore I am", "Descartes"],
+  ["Knowledge is power", "Francis Bacon"],
+  ["Better to remain silent and be thought a fool", "Mark Twain"],
+  ["Time you enjoy wasting is not wasted time", "Marthe Troly-Curtin"],
+  ["A journey of a thousand miles begins with a single step", "Lao Tzu"],
+  ["The pen is mightier than the sword", "Edward Bulwer-Lytton"],
+  ["Where there is a will there is a way", "Proverb"],
+  ["Actions speak louder than words", "Proverb"],
+  ["Beauty is in the eye of the beholder", "Proverb"],
+  ["Birds of a feather flock together", "Proverb"],
+  ["Don't judge a book by its cover", "Proverb"],
+  ["Fortune favors the bold", "Proverb"],
+  ["Practice makes perfect", "Proverb"],
+  ["Rome was not built in a day", "Proverb"],
+  ["The early bird catches the worm", "Proverb"],
+  ["Two heads are better than one", "Proverb"],
+  ["All that glitters is not gold", "Shakespeare"],
+  ["Necessity is the mother of invention", "Plato"],
+  ["Absence makes the heart grow fonder", "Proverb"],
+  ["Nothing ventured nothing gained", "Proverb"],
+  ["A picture is worth a thousand words", "Proverb"],
+  ["Brevity is the soul of wit", "Shakespeare"],
+  ["All the world is a stage", "Shakespeare"],
+  ["Hell is other people", "Sartre"],
+  ["Man is the measure of all things", "Protagoras"],
+  ["The only true wisdom is in knowing you know nothing", "Socrates"],
+  ["I came I saw I conquered", "Julius Caesar"],
+  ["Better late than never", "Proverb"],
+  ["Honesty is the best policy", "Proverb"],
+  ["The truth is rarely pure and never simple", "Oscar Wilde"],
+  ["I have nothing to declare except my genius", "Oscar Wilde"],
+  ["Be yourself everyone else is already taken", "Oscar Wilde"],
+  ["We are all in the gutter but some of us are looking at the stars", "Oscar Wilde"],
+  ["Experience is the name we give to our mistakes", "Oscar Wilde"],
+  ["The mind is its own place", "John Milton"],
+  ["Hell is empty and all the devils are here", "Shakespeare"],
+  ["The course of true love never did run smooth", "Shakespeare"],
+  ["What's in a name a rose by any other name would smell as sweet", "Shakespeare"],
+  ["The lady doth protest too much methinks", "Shakespeare"],
+  ["A man can be destroyed but not defeated", "Hemingway"],
+  ["Whereof one cannot speak thereof one must be silent", "Wittgenstein"],
+  ["The limits of my language mean the limits of my world", "Wittgenstein"],
+  ["What we cannot speak about we must pass over in silence", "Wittgenstein"],
+  ["God is dead and we have killed him", "Nietzsche"],
+  ["He who has a why to live can bear almost any how", "Nietzsche"],
+  ["That which does not kill us makes us stronger", "Nietzsche"],
+  ["When you stare into the abyss the abyss stares back", "Nietzsche"],
+  ["The only thing I know is that I know nothing", "Socrates"],
+  ["An honest man is always a child", "Socrates"],
+  ["A room without books is like a body without a soul", "Cicero"],
+  ["No man is an island", "John Donne"],
+  ["The road to hell is paved with good intentions", "Proverb"],
+  ["Do not go gentle into that good night", "Dylan Thomas"],
+  ["The fault dear Brutus is not in our stars", "Shakespeare"],
+  ["Some are born great some achieve greatness", "Shakespeare"],
+  ["Cowards die many times before their deaths", "Shakespeare"],
+  ["I would prefer not to", "Herman Melville"],
+  ["Call me Ishmael", "Herman Melville"],
+  ["It was the best of times it was the worst of times", "Charles Dickens"],
+  ["Whatever you are be a good one", "Abraham Lincoln"],
+  ["The only true voyage of discovery would be to see with new eyes", "Marcel Proust"],
+  ["The heart has its reasons of which reason knows nothing", "Pascal"],
+  ["I disapprove of what you say but I will defend your right to say it", "Voltaire"],
+  ["Common sense is not so common", "Voltaire"],
+  ["The best is the enemy of the good", "Voltaire"],
+  ["I am the master of my fate I am the captain of my soul", "William Henley"],
+  ["Two roads diverged in a wood and I took the one less traveled by", "Robert Frost"],
+  ["The unexpected always happens", "Proverb"],
+  ["Imagination is more important than knowledge", "Albert Einstein"],
+  ["Try not to become a man of success but rather a man of value", "Albert Einstein"],
+  ["Logic will get you from A to B imagination will take you everywhere", "Albert Einstein"],
+  ["The greatest glory is not in never falling but in rising every time we fall", "Confucius"],
+  ["Choose a job you love and you will never have to work a day in your life", "Confucius"],
+  ["Wheresoever you go go with all your heart", "Confucius"],
+  ["The journey is the reward", "Taoist saying"],
+  ["A wise man learns more from his enemies than a fool from his friends", "Baltasar Gracian"],
+  ["The only way out is through", "Robert Frost"],
+  ["Not all those who wander are lost", "J R R Tolkien"],
+  ["Even the smallest person can change the course of the future", "J R R Tolkien"],
+  ["So we beat on boats against the current", "F Scott Fitzgerald"],
+  ["The night is darkest just before the dawn", "Thomas Fuller"],
+  ["A thing of beauty is a joy forever", "John Keats"],
+  ["The only impossible journey is the one you never begin", "Tony Robbins"],
+  ["What is to give light must endure burning", "Viktor Frankl"],
+  ["Between stimulus and response there is a space", "Viktor Frankl"],
+  ["Stories are the way we make sense of our lives", "Anonymous"],
+  ["The map is not the territory", "Alfred Korzybski"],
+  ["Wonder is the beginning of wisdom", "Socrates"],
+  ["What you seek is seeking you", "Rumi"],
+  ["The wound is the place where the light enters you", "Rumi"],
+  ["Yesterday I was clever so I wanted to change the world", "Rumi"],
+  ["Let yourself be silently drawn by the strange pull of what you really love", "Rumi"],
+  ["Life is what happens when you are busy making other plans", "John Lennon"],
+];
+
+/* =====================================================================
+   Daily seed
+   ===================================================================== */
+function dayNumber(){
+  const epoch = new Date(2026, 4, 1, 0, 0, 0); // May 1, 2026 is day 1
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  return Math.max(1, Math.floor((today - epoch) / 86400000) + 1);
+}
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function shuffleArr(arr, rng){
+  const a = arr.slice();
+  for (let i=a.length-1;i>0;i--){
+    const j = Math.floor(rng() * (i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function generateDailyPuzzle(day){
+  const rng = mulberry32(day * 7919 + 31);
+  const quote = QUOTES[Math.floor(rng() * QUOTES.length)];
+  // Glyph indices to use: pick 26 from the 26 available, shuffled.
+  // (We have exactly 26, so this is just a permutation.)
+  const glyphIndices = shuffleArr(Array.from({length:26}, (_,i)=>i), rng);
+  // For each letter A..Z, assign a glyph index
+  const letterToGlyph = {};
+  const glyphToLetter = {};
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for (let i=0;i<26;i++){
+    const letter = A[i];
+    const g = glyphIndices[i];
+    letterToGlyph[letter] = g;
+    glyphToLetter[g] = letter;
+  }
+  return { quote: quote[0].toUpperCase(), author: quote[1], letterToGlyph, glyphToLetter, day };
+}
+
+/* =====================================================================
+   Glyph rendering
+   ===================================================================== */
+function renderGlyphSVG(glyphIdx, size=30, sw=2.2){
+  const shapes = GLYPHS[glyphIdx];
+  if (!shapes) return '';
+  let svg = `<svg viewBox="0 0 30 30" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">`;
+  svg += `<g stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" fill="none">`;
+  for (const s of shapes){
+    if (s[0] === 'L'){
+      svg += `<line x1="${s[1]}" y1="${s[2]}" x2="${s[3]}" y2="${s[4]}"/>`;
+    } else if (s[0] === 'C'){
+      svg += `<circle cx="${s[1]}" cy="${s[2]}" r="${s[3]}"/>`;
+    } else if (s[0] === 'D'){
+      svg += `<circle cx="${s[1]}" cy="${s[2]}" r="${s[3]}" fill="currentColor" stroke="none"/>`;
+    } else if (s[0] === 'A'){
+      const [_, cx, cy, r, a1, a2] = s;
+      const r1 = a1 * Math.PI / 180;
+      const r2 = a2 * Math.PI / 180;
+      const x1 = cx + r * Math.cos(r1);
+      const y1 = cy + r * Math.sin(r1);
+      const x2 = cx + r * Math.cos(r2);
+      const y2 = cy + r * Math.sin(r2);
+      const large = Math.abs(a2-a1) > 180 ? 1 : 0;
+      svg += `<path d="M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}"/>`;
+    }
+  }
+  svg += `</g></svg>`;
+  return svg;
+}
+
+/* =====================================================================
+   Game state
+   ===================================================================== */
+const STORAGE_KEY = 'obscura_v1';
+
+const state = {
+  puzzle: null,
+  // Per-glyph status: 'unsolved' | 'solved' | 'hinted'
+  glyphStatus: {},  // glyphIdx → status
+  // Player's current letter assignments (for solved/hinted glyphs only)
+  // Only correctly-solved or hinted glyphs are mapped; wrong guesses don't persist.
+  selectedGlyph: null,
+  errors: 0,
+  hintsUsed: 0,
+  startTime: null,
+  endTime: null,
+  solved: false,
+  failed: false,
+  letterUsedAsCorrect: new Set(), // letters already revealed (so they should appear "used")
+  letterTried: new Set(),         // letters already submitted (right or wrong) — disabled on bank
+  freqShown: false,
+};
+
+const MAX_ERRORS = 5;
+const MAX_HINTS = 3;
+
+/* ----- Persistence ----- */
+function loadStore(){
+  try{
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  }catch{
+    return {};
+  }
+}
+function saveStore(s){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }catch{}
+}
+
+/* =====================================================================
+   Setup
+   ===================================================================== */
+const $ = (id)=>document.getElementById(id);
+
+function setup(){
+  const day = dayNumber();
+  state.puzzle = generateDailyPuzzle(day);
+  $('dayNumber').textContent = '#' + day;
+
+  // Init per-glyph status: every letter that appears in the quote needs to be solved
+  const usedGlyphs = new Set();
+  for (const ch of state.puzzle.quote){
+    if (/[A-Z]/.test(ch)){
+      usedGlyphs.add(state.puzzle.letterToGlyph[ch]);
+    }
+  }
+  state.usedGlyphs = usedGlyphs;
+  state.glyphStatus = {};
+  for (const g of usedGlyphs) state.glyphStatus[g] = 'unsolved';
+
+  // Restore today's progress if we have it
+  const store = loadStore();
+  if (store.today && store.today.day === day){
+    state.errors = store.today.errors || 0;
+    state.hintsUsed = store.today.hintsUsed || 0;
+    state.solved = !!store.today.solved;
+    state.failed = !!store.today.failed;
+    state.startTime = store.today.startTime || null;
+    state.endTime = store.today.endTime || null;
+    if (Array.isArray(store.today.solvedGlyphs)){
+      for (const g of store.today.solvedGlyphs) state.glyphStatus[g] = 'solved';
+    }
+    if (Array.isArray(store.today.hintedGlyphs)){
+      for (const g of store.today.hintedGlyphs) state.glyphStatus[g] = 'hinted';
+    }
+    if (Array.isArray(store.today.letterTried)){
+      for (const l of store.today.letterTried) state.letterTried.add(l);
+    }
+  }
+
+  // Update letterUsedAsCorrect from current state
+  for (const [g, s] of Object.entries(state.glyphStatus)){
+    if (s === 'solved' || s === 'hinted'){
+      state.letterUsedAsCorrect.add(state.puzzle.glyphToLetter[+g]);
+    }
+  }
+
+  // Show streak
+  const stats = store.stats || { played:0, solved:0, streak:0, best:0, lastSolvedDay:0 };
+  $('streakNum').innerHTML = stats.streak + '<span class="flame">✺</span>';
+
+  renderCipher();
+  renderAlphabet();
+  renderMistakes();
+  renderHints();
+  bindEvents();
+
+  // First-time help
+  if (!store.seenHelp){
+    $('helpModal').classList.add('show');
+  }
+
+  // If already done today, reflect end state
+  if (state.solved){
+    showEndModal(true);
+  } else if (state.failed){
+    showEndModal(false);
+  }
+
+  // Save current minimal state
+  persistToday();
+}
+
+function persistToday(){
+  const store = loadStore();
+  const day = state.puzzle.day;
+  const solvedGlyphs = [];
+  const hintedGlyphs = [];
+  for (const [g,s] of Object.entries(state.glyphStatus)){
+    if (s === 'solved') solvedGlyphs.push(+g);
+    else if (s === 'hinted') hintedGlyphs.push(+g);
+  }
+  store.today = {
+    day,
+    errors: state.errors,
+    hintsUsed: state.hintsUsed,
+    solvedGlyphs,
+    hintedGlyphs,
+    letterTried: [...state.letterTried],
+    solved: state.solved,
+    failed: state.failed,
+    startTime: state.startTime,
+    endTime: state.endTime,
+  };
+  store.stats = store.stats || { played:0, solved:0, streak:0, best:0, lastSolvedDay:0 };
+  saveStore(store);
+}
+
+/* =====================================================================
+   Render
+   ===================================================================== */
+function renderCipher(){
+  const wrap = $('cipherText');
+  wrap.innerHTML = '';
+  const text = state.puzzle.quote;
+  const words = text.split(/(\s+)/); // keep spaces
+
+  let curWord = document.createElement('div');
+  curWord.className = 'word';
+  wrap.appendChild(curWord);
+
+  for (const word of words){
+    if (/^\s+$/.test(word)){
+      // start a new word group
+      curWord = document.createElement('div');
+      curWord.className = 'word';
+      wrap.appendChild(curWord);
+      continue;
+    }
+    for (const ch of word){
+      const slot = document.createElement('div');
+      if (/[A-Z]/.test(ch)){
+        const g = state.puzzle.letterToGlyph[ch];
+        slot.className = 'glyph-slot';
+        slot.dataset.glyph = g;
+        slot.dataset.letter = ch;
+        slot.innerHTML = `
+          <div class="glyph-icon">${renderGlyphSVG(g, 30)}</div>
+          <div class="letter-slot">${state.glyphStatus[g] !== 'unsolved' ? ch : ''}</div>
+        `;
+        // Status classes
+        if (state.glyphStatus[g] !== 'unsolved'){
+          slot.classList.add('solved');
+        } else {
+          slot.classList.add('empty');
+        }
+      } else {
+        // punctuation (rare in our quotes — apostrophes mostly)
+        slot.className = 'glyph-slot punct';
+        slot.innerHTML = `<div class="glyph-icon">${ch}</div><div class="letter-slot">${ch}</div>`;
+      }
+      curWord.appendChild(slot);
+    }
+  }
+  // refresh selected highlights
+  applySelectionHighlight();
+  // Show attribution if solved
+  if (state.solved){
+    $('cipherAttribution').textContent = state.puzzle.author;
+    $('cipherAttribution').classList.add('show');
+  }
+}
+
+function renderAlphabet(){
+  const wrap = $('alphabet');
+  wrap.innerHTML = '';
+  for (const letter of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'){
+    const k = document.createElement('div');
+    k.className = 'letter-key';
+    k.textContent = letter;
+    k.dataset.letter = letter;
+    if (state.letterUsedAsCorrect.has(letter)){
+      k.classList.add('locked');
+    } else if (state.letterTried.has(letter)){
+      k.classList.add('used');
+    }
+    if (state.solved || state.failed){
+      k.classList.add('disabled');
+    }
+    wrap.appendChild(k);
+  }
+}
+
+function renderMistakes(){
+  const wrap = $('mistakesMarks');
+  wrap.innerHTML = '';
+  for (let i=0; i<MAX_ERRORS; i++){
+    const m = document.createElement('div');
+    m.className = 'mark' + (i < state.errors ? ' used' : '');
+    wrap.appendChild(m);
+  }
+}
+function renderHints(){
+  const wrap = $('hintsMarks');
+  wrap.innerHTML = '';
+  for (let i=0; i<MAX_HINTS; i++){
+    const c = document.createElement('div');
+    c.className = 'candle' + (i < state.hintsUsed ? ' spent' : '');
+    wrap.appendChild(c);
+  }
+}
+
+function applySelectionHighlight(){
+  const slots = document.querySelectorAll('.glyph-slot');
+  for (const s of slots){
+    s.classList.remove('selected');
+    s.classList.remove('same-as-selected');
+    if (state.selectedGlyph !== null && +s.dataset.glyph === state.selectedGlyph){
+      s.classList.add(s.classList.contains('solved') ? 'same-as-selected' : 'selected');
+    }
+  }
+}
+
+/* =====================================================================
+   Selection / input
+   ===================================================================== */
+function selectGlyph(g){
+  if (state.solved || state.failed) return;
+  if (state.glyphStatus[g] !== 'unsolved') return;
+  state.selectedGlyph = g;
+  applySelectionHighlight();
+  // Show selection prompt
+  $('selectedGlyphDisplay').innerHTML = renderGlyphSVG(g, 28, 2.4);
+  $('selectionPrompt').classList.add('show');
+}
+function clearSelection(){
+  state.selectedGlyph = null;
+  applySelectionHighlight();
+  $('selectionPrompt').classList.remove('show');
+}
+
+function attemptLetter(letter){
+  if (state.solved || state.failed) return;
+  if (state.selectedGlyph === null){
+    showToast('Select a glyph first', 'error');
+    return;
+  }
+  letter = letter.toUpperCase();
+  if (!/^[A-Z]$/.test(letter)) return;
+  // If letter is already locked (correct elsewhere), can't reuse
+  if (state.letterUsedAsCorrect.has(letter)){
+    showToast(`${letter} is already in use`, 'error');
+    return;
+  }
+  // First action of the day starts the timer
+  if (!state.startTime) state.startTime = Date.now();
+
+  const g = state.selectedGlyph;
+  const correctLetter = state.puzzle.glyphToLetter[g];
+  state.letterTried.add(letter);
+
+  if (letter === correctLetter){
+    // Correct!
+    state.glyphStatus[g] = 'solved';
+    state.letterUsedAsCorrect.add(letter);
+    revealGlyph(g, letter, false);
+    clearSelection();
+    afterMove();
+  } else {
+    // Wrong
+    state.errors++;
+    flashWrong(g, letter);
+    renderMistakes();
+    if (state.errors >= MAX_ERRORS){
+      // Lose
+      failGame();
+      return;
+    }
+    persistToday();
+  }
+  renderAlphabet();
+}
+
+function revealGlyph(g, letter, fromHint){
+  // Update DOM
+  const slots = document.querySelectorAll(`.glyph-slot[data-glyph="${g}"]`);
+  slots.forEach((slot, i)=>{
+    slot.classList.add('flip-in');
+    slot.classList.add('solved');
+    slot.classList.remove('empty');
+    slot.classList.remove('selected');
+    slot.classList.remove('same-as-selected');
+    setTimeout(()=>{
+      slot.querySelector('.letter-slot').textContent = letter;
+      slot.classList.remove('flip-in');
+    }, 200);
+  });
+  if (fromHint){
+    showToast(`Revealed: ${letter}`, 'gold');
+  } else {
+    showToast(`Correct — ${letter}`, 'gold');
+  }
+}
+function flashWrong(g, letter){
+  const slots = document.querySelectorAll(`.glyph-slot[data-glyph="${g}"]`);
+  slots.forEach(slot=>{
+    slot.classList.add('shake');
+    slot.classList.add('error-flash');
+    const ls = slot.querySelector('.letter-slot');
+    const prev = ls.textContent;
+    ls.textContent = letter;
+    setTimeout(()=>{
+      slot.classList.remove('shake');
+      slot.classList.remove('error-flash');
+      ls.textContent = prev;
+    }, 420);
+  });
+  showToast(`Not ${letter}`, 'error');
+}
+
+function afterMove(){
+  // Check win condition: every used glyph is solved or hinted
+  const allDone = [...state.usedGlyphs].every(g => state.glyphStatus[g] !== 'unsolved');
+  if (allDone){
+    winGame();
+  } else {
+    persistToday();
+  }
+}
+
+/* =====================================================================
+   Win / lose
+   ===================================================================== */
+function winGame(){
+  state.solved = true;
+  state.endTime = Date.now();
+
+  // Update lifetime stats
+  const store = loadStore();
+  store.stats = store.stats || { played:0, solved:0, streak:0, best:0, lastSolvedDay:0 };
+  // Only update once per day
+  if (store.lastFinishedDay !== state.puzzle.day){
+    store.stats.played++;
+    store.stats.solved++;
+    // Streak: if last solved day was yesterday, +1, else reset to 1
+    if (store.stats.lastSolvedDay === state.puzzle.day - 1){
+      store.stats.streak++;
+    } else {
+      store.stats.streak = 1;
+    }
+    if (store.stats.streak > store.stats.best) store.stats.best = store.stats.streak;
+    store.stats.lastSolvedDay = state.puzzle.day;
+    store.lastFinishedDay = state.puzzle.day;
+  }
+  saveStore(store);
+  persistToday();
+
+  // Update header streak
+  $('streakNum').innerHTML = store.stats.streak + '<span class="flame">✺</span>';
+
+  // Show attribution under cipher
+  setTimeout(()=>{
+    $('cipherAttribution').textContent = state.puzzle.author;
+    $('cipherAttribution').classList.add('show');
+  }, 600);
+
+  setTimeout(()=>showEndModal(true), 1200);
+}
+
+function failGame(){
+  state.failed = true;
+  state.endTime = Date.now();
+
+  // Reveal all unsolved glyphs (without counting as solved)
+  for (const g of state.usedGlyphs){
+    if (state.glyphStatus[g] === 'unsolved'){
+      state.glyphStatus[g] = 'revealed-fail';
+      const letter = state.puzzle.glyphToLetter[g];
+      const slots = document.querySelectorAll(`.glyph-slot[data-glyph="${g}"]`);
+      slots.forEach(slot=>{
+        slot.classList.add('solved');
+        slot.classList.remove('empty');
+        const ls = slot.querySelector('.letter-slot');
+        ls.textContent = letter;
+        ls.style.color = 'var(--error)';
+        ls.style.borderBottomColor = 'rgba(213,101,101,0.4)';
+        ls.style.textShadow = '0 0 8px rgba(213,101,101,0.4)';
+      });
+    }
+  }
+  clearSelection();
+  renderAlphabet();
+
+  // Update lifetime stats
+  const store = loadStore();
+  store.stats = store.stats || { played:0, solved:0, streak:0, best:0, lastSolvedDay:0 };
+  if (store.lastFinishedDay !== state.puzzle.day){
+    store.stats.played++;
+    store.stats.streak = 0;
+    store.lastFinishedDay = state.puzzle.day;
+  }
+  saveStore(store);
+  persistToday();
+  $('streakNum').innerHTML = store.stats.streak + '<span class="flame">✺</span>';
+
+  setTimeout(()=>{
+    $('cipherAttribution').textContent = state.puzzle.author;
+    $('cipherAttribution').classList.add('show');
+  }, 600);
+  setTimeout(()=>showEndModal(false), 1200);
+}
+
+function showEndModal(won){
+  const m = $('endModal');
+  m.classList.add('show');
+  // Heading
+  if (won){
+    $('endTag').textContent = '— Decryption Complete —';
+    $('endTag').classList.remove('fail');
+    $('endHead').innerHTML = 'It is <em>read</em>.';
+    $('endHead').classList.remove('fail');
+    $('endBlurb').textContent = blurbForWin();
+  } else {
+    $('endTag').textContent = '— The Cipher Holds —';
+    $('endTag').classList.add('fail');
+    $('endHead').innerHTML = 'It <em>resists</em>.';
+    $('endHead').classList.add('fail');
+    $('endBlurb').textContent = 'Tomorrow, a new fragment. The glyphs will speak again.';
+  }
+  // Quote
+  $('endQuote').textContent = state.puzzle.quote.toLowerCase().replace(/\b\w/g, c=>c.toUpperCase());
+  $('endAttribution').textContent = state.puzzle.author;
+  // Stats
+  const elapsedMs = (state.endTime || Date.now()) - (state.startTime || Date.now());
+  $('endTime').textContent = formatTime(elapsedMs);
+  $('endErrors').textContent = `${state.errors}/${MAX_ERRORS}`;
+  $('endReveals').textContent = `${state.hintsUsed}/${MAX_HINTS}`;
+
+  // Share grid
+  $('shareGrid').textContent = buildShareText(won);
+
+  // Countdown
+  updateCountdown();
+}
+
+function blurbForWin(){
+  const e = state.errors, h = state.hintsUsed;
+  if (e === 0 && h === 0) return 'A flawless reading. The fragment surrenders to you entirely.';
+  if (e === 0) return 'A clean decode, with light to spare.';
+  if (h === 0) return 'No reveals — your eye for pattern serves you well.';
+  if (e + h <= 3) return 'A measured solve. The codex deepens.';
+  return 'It yields, in the end. That is what matters.';
+}
+
+function buildShareText(won){
+  const total = state.puzzle.day;
+  const status = won ? '✓' : '✗';
+  const elapsedMs = (state.endTime || Date.now()) - (state.startTime || Date.now());
+  let g = '';
+  // Compact glyph status grid
+  const usedList = [...state.usedGlyphs];
+  for (let i=0;i<usedList.length;i++){
+    const s = state.glyphStatus[usedList[i]];
+    if (s === 'solved') g += '◆';
+    else if (s === 'hinted') g += '✦';
+    else g += '◇';
+    if ((i+1) % 8 === 0 && i < usedList.length-1) g += '\n';
+  }
+  let lines = [];
+  lines.push(`OBSCURA #${total}  ${status}  ${formatTime(elapsedMs)}`);
+  lines.push(g);
+  lines.push(`Errors ${state.errors}/${MAX_ERRORS} · Reveals ${state.hintsUsed}/${MAX_HINTS}`);
+  return lines.join('\n');
+}
+
+function formatTime(ms){
+  if (!ms || ms < 0) ms = 0;
+  const s = Math.floor(ms/1000);
+  const m = Math.floor(s/60);
+  const sec = s % 60;
+  if (m >= 60){
+    const h = Math.floor(m/60);
+    const mm = m % 60;
+    return `${h}:${String(mm).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+  return `${m}:${String(sec).padStart(2,'0')}`;
+}
+
+function updateCountdown(){
+  const now = new Date();
+  const tomorrow = new Date(now);
+  tomorrow.setHours(24, 0, 0, 0);
+  const ms = tomorrow - now;
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  $('countdown').innerHTML = `Next cipher in <strong>${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</strong>`;
+  if (state.solved || state.failed){
+    setTimeout(updateCountdown, 1000);
+  }
+}
+
+/* =====================================================================
+   Hint
+   =====================================================================  */
+function useHint(){
+  if (state.solved || state.failed) return;
+  if (state.hintsUsed >= MAX_HINTS){ showToast('No reveals remaining', 'error'); return; }
+  // Pick a random unsolved glyph
+  const remaining = [...state.usedGlyphs].filter(g => state.glyphStatus[g] === 'unsolved');
+  if (remaining.length === 0) return;
+  // If a glyph is selected, hint that one preferentially
+  let target;
+  if (state.selectedGlyph !== null && state.glyphStatus[state.selectedGlyph] === 'unsolved'){
+    target = state.selectedGlyph;
+  } else {
+    target = remaining[Math.floor(Math.random() * remaining.length)];
+  }
+  if (!state.startTime) state.startTime = Date.now();
+  state.glyphStatus[target] = 'hinted';
+  const letter = state.puzzle.glyphToLetter[target];
+  state.letterUsedAsCorrect.add(letter);
+  state.letterTried.add(letter);
+  state.hintsUsed++;
+  revealGlyph(target, letter, true);
+  clearSelection();
+  renderAlphabet();
+  renderHints();
+  afterMove();
+}
+
+/* =====================================================================
+   Frequency panel
+   ===================================================================== */
+function renderFrequency(){
+  const wrap = $('freqRows');
+  wrap.innerHTML = '';
+  // Count glyph occurrences in the cipher
+  const counts = {};
+  let total = 0;
+  for (const ch of state.puzzle.quote){
+    if (/[A-Z]/.test(ch)){
+      const g = state.puzzle.letterToGlyph[ch];
+      counts[g] = (counts[g] || 0) + 1;
+      total++;
+    }
+  }
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([g,c])=>[+g, c]);
+  const max = sorted[0]?.[1] || 1;
+  for (const [g, c] of sorted){
+    const row = document.createElement('div');
+    row.className = 'freq-row' + (state.glyphStatus[g] !== 'unsolved' ? ' mapped' : '');
+    const pct = (c / total * 100).toFixed(1);
+    row.innerHTML = `
+      <div class="gicon">${renderGlyphSVG(g, 22, 2.2)}</div>
+      <div style="display:flex;align-items:center;gap:10px;flex:1">
+        <div class="bar"><div class="bar-fill" style="width:${(c/max*100).toFixed(1)}%"></div></div>
+        <div class="pct">${pct}%</div>
+      </div>
+    `;
+    wrap.appendChild(row);
+  }
+}
+function toggleFreq(){
+  state.freqShown = !state.freqShown;
+  const p = $('freqPanel');
+  p.classList.toggle('show', state.freqShown);
+  if (state.freqShown) renderFrequency();
+}
+
+/* =====================================================================
+   Reset (confirm)
+   ===================================================================== */
+function resetToday(){
+  if (state.solved || state.failed) return;
+  if (!confirm('Reset today\'s cipher? Your progress and errors will be cleared.')) return;
+  state.glyphStatus = {};
+  for (const g of state.usedGlyphs) state.glyphStatus[g] = 'unsolved';
+  state.errors = 0;
+  state.hintsUsed = 0;
+  state.startTime = null;
+  state.endTime = null;
+  state.letterTried.clear();
+  state.letterUsedAsCorrect.clear();
+  state.selectedGlyph = null;
+  persistToday();
+  renderCipher();
+  renderAlphabet();
+  renderMistakes();
+  renderHints();
+  if (state.freqShown) renderFrequency();
+  clearSelection();
+  showToast('Reset complete', 'gold');
+}
+
+/* =====================================================================
+   Toast
+   ===================================================================== */
+function showToast(msg, kind=''){
+  const log = $('log');
+  const line = document.createElement('div');
+  line.className = 'log-line' + (kind ? ' ' + kind : '');
+  line.textContent = msg;
+  log.appendChild(line);
+  setTimeout(()=>line.remove(), 3000);
+  while (log.children.length > 4) log.firstChild.remove();
+}
+
+/* =====================================================================
+   Stats modal
+   ===================================================================== */
+function openStats(){
+  const store = loadStore();
+  const s = store.stats || { played:0, solved:0, streak:0, best:0 };
+  $('sPlayed').textContent = s.played || 0;
+  $('sSolved').textContent = s.solved || 0;
+  $('sStreak').textContent = s.streak || 0;
+  $('sBest').textContent = s.best || 0;
+  $('sNoData').style.display = (s.played === 0) ? 'block' : 'none';
+  $('statsModal').classList.add('show');
+}
+
+/* =====================================================================
+   Events
+   ===================================================================== */
+function bindEvents(){
+  // Click on cipher area: glyph selection
+  $('cipherText').addEventListener('click', e=>{
+    const slot = e.target.closest('.glyph-slot');
+    if (!slot) return;
+    if (slot.classList.contains('punct')) return;
+    if (slot.classList.contains('solved')){
+      // tapping a solved glyph still highlights it (so user can see siblings)
+      const g = +slot.dataset.glyph;
+      state.selectedGlyph = g;
+      applySelectionHighlight();
+      $('selectionPrompt').classList.remove('show');
+      return;
+    }
+    const g = +slot.dataset.glyph;
+    selectGlyph(g);
+  });
+
+  // Click on alphabet bank
+  $('alphabet').addEventListener('click', e=>{
+    const k = e.target.closest('.letter-key');
+    if (!k) return;
+    if (k.classList.contains('disabled')) return;
+    if (k.classList.contains('locked')){
+      showToast(`${k.dataset.letter} is already mapped`, 'error');
+      return;
+    }
+    if (state.selectedGlyph === null){
+      showToast('Select a glyph first', 'error');
+      return;
+    }
+    attemptLetter(k.dataset.letter);
+  });
+
+  // Keyboard input
+  document.addEventListener('keydown', e=>{
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    // ignore if any modal is open and not focused-friendly
+    if ($('helpModal').classList.contains('show') ||
+        $('endModal').classList.contains('show') ||
+        $('statsModal').classList.contains('show')){
+      if (e.key === 'Escape'){
+        if ($('helpModal').classList.contains('show')) $('helpModal').classList.remove('show');
+        if ($('statsModal').classList.contains('show')) $('statsModal').classList.remove('show');
+      }
+      return;
+    }
+    if (e.key === 'Escape'){ clearSelection(); return; }
+    if (/^[a-zA-Z]$/.test(e.key)){
+      if (state.selectedGlyph === null) return;
+      attemptLetter(e.key);
+    }
+  });
+
+  // Buttons
+  $('btnHint').addEventListener('click', useHint);
+  $('btnFreq').addEventListener('click', toggleFreq);
+  $('btnReset').addEventListener('click', resetToday);
+  $('btnHelp').addEventListener('click', ()=>$('helpModal').classList.add('show'));
+  $('btnStats').addEventListener('click', openStats);
+  $('btnHelpClose').addEventListener('click', ()=>{
+    $('helpModal').classList.remove('show');
+    const store = loadStore();
+    store.seenHelp = true;
+    saveStore(store);
+  });
+  $('btnStatsClose').addEventListener('click', ()=>$('statsModal').classList.remove('show'));
+  $('btnViewStats').addEventListener('click', ()=>{
+    $('endModal').classList.remove('show');
+    openStats();
+  });
+  $('closePrompt').addEventListener('click', clearSelection);
+
+  $('btnShare').addEventListener('click', ()=>{
+    const text = buildShareText(state.solved);
+    if (navigator.share){
+      navigator.share({ text }).catch(()=>copyShare(text));
+    } else {
+      copyShare(text);
+    }
+  });
+
+  // Click outside the prompt to clear selection
+  document.addEventListener('click', e=>{
+    const sel = state.selectedGlyph;
+    if (sel === null) return;
+    if (e.target.closest('.glyph-slot') || e.target.closest('.letter-key') ||
+        e.target.closest('.selection-prompt') || e.target.closest('.btn') ||
+        e.target.closest('.icon-btn')) return;
+    clearSelection();
+  });
+
+  // Click outside modal to close (stats/help only)
+  ['statsModal','helpModal'].forEach(id=>{
+    $(id).addEventListener('click', e=>{
+      if (e.target === $(id)) $(id).classList.remove('show');
+    });
+  });
+}
+
+function copyShare(text){
+  if (navigator.clipboard){
+    navigator.clipboard.writeText(text).then(()=>showToast('Copied to clipboard', 'gold'))
+      .catch(()=>showToast('Could not copy', 'error'));
+  } else {
+    showToast('Copy not supported', 'error');
+  }
+}
+
+/* =====================================================================
+   Bootstrap
+   ===================================================================== */
+window.addEventListener('load', setup);
+</script>
+
+</body>
+</html>
